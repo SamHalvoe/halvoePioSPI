@@ -1,0 +1,36 @@
+.program halvoe_spi_peripheral
+
+  wait 0 pin 1
+  wait 1 pin 1
+  in pins, 1
+
+% c-sdk {
+static inline void halvoe_spi_peripheral_program_init(PIO io_pio, uint in_stateMachine, uint in_programMemoryOffset, uint in_dataPin)
+{
+  pio_sm_config config = halvoe_spi_peripheral_get_default_config(in_programMemoryOffset);
+
+  // Set the IN base pin to the provided `pin` parameter. This is the data
+  // pin, and the next-numbered GPIO is used as the clock pin.
+  sm_config_set_in_pins(&config, in_dataPin);
+  // Set the pin directions to input at the PIO
+  pio_sm_set_consecutive_pindirs(io_pio, in_stateMachine, in_dataPin, 2, false);
+  // Connect these GPIOs to this PIO block
+  pio_gpio_init(io_pio, in_dataPin);
+  pio_gpio_init(io_pio, in_dataPin + 1);
+
+  // Shifting to left matches the customary MSB-first ordering of SPI.
+  sm_config_set_in_shift(
+      &config,
+      false, // Shift-to-right = false (i.e. shift to left)
+      true,  // Autopush enabled
+      8      // Autopush threshold = 8
+  );
+
+  // We only receive, so disable the TX FIFO to make the RX FIFO deeper.
+  sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_RX);
+
+  // Load our configuration, and start the program from the beginning
+  pio_sm_init(io_pio, in_stateMachine, in_programMemoryOffset, &config);
+  pio_sm_set_enabled(io_pio, in_stateMachine, true);
+}
+%}
