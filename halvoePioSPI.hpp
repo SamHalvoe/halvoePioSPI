@@ -7,24 +7,22 @@
 #include "halvoePioSPI.pio.hpp"
 
 int g_dmaChannelIndex = -1;
-uint8_t* g_dmaBuffer = nullptr;
 
 static inline void clear_dma_interrupt_request()
 {
   // clear interrupt request
-  dma_channel_acknowledge_irq0(g_dmaChannelIndex);
+  dma_channel_acknowledge_irq1(g_dmaChannelIndex);
 }
 
-static inline void restart_dma_channel()
+static inline void restart_dma_channel(uint8_t* out_dmaBuffer)
 {
-  dma_channel_set_write_addr(g_dmaChannelIndex, g_dmaBuffer, true);
+  dma_channel_set_write_addr(g_dmaChannelIndex, out_dmaBuffer, true);
 }
 
 static inline void halvoe_spi_dma_init(PIO io_pio, uint in_stateMachine,
                                       uint8_t* out_dmaBuffer, size_t in_dmaBufferSize,
                                       irq_handler_t in_dmaInterruptHandler)
 {
-  g_dmaBuffer = out_dmaBuffer;
   g_dmaChannelIndex = dma_claim_unused_channel(true);
   dma_channel_config config = dma_channel_get_default_config(g_dmaChannelIndex);
   channel_config_set_read_increment(&config, false);
@@ -39,9 +37,9 @@ static inline void halvoe_spi_dma_init(PIO io_pio, uint in_stateMachine,
     true                           // Start immediately
   );
 
-  dma_channel_set_irq0_enabled(g_dmaChannelIndex, true);
-  irq_set_exclusive_handler(DMA_IRQ_0, in_dmaInterruptHandler);
-  irq_set_enabled(DMA_IRQ_0, true);
+  dma_channel_set_irq1_enabled(g_dmaChannelIndex, true);
+  irq_set_exclusive_handler(DMA_IRQ_1, in_dmaInterruptHandler);
+  irq_set_enabled(DMA_IRQ_1, true);
 }
 
 static inline void halvoe_spi_peripheral_program_init(PIO io_pio, uint in_stateMachine, uint in_programMemoryOffset, uint in_dataPin,
