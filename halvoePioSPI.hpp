@@ -6,12 +6,11 @@
 
 #include "halvoePioSPI.pio.hpp"
 
-int g_dmaChannelIndex = -1;
+static int g_dmaChannelIndex = -1;
 
 static inline void clear_dma_interrupt_request()
 {
-  // clear interrupt request
-  dma_channel_acknowledge_irq1(g_dmaChannelIndex);
+  dma_irqn_acknowledge_channel(DMA_IRQ_1, g_dmaChannelIndex);
 }
 
 static inline void restart_dma_channel(uint8_t* out_dmaBuffer)
@@ -37,7 +36,7 @@ static inline void halvoe_spi_dma_init(PIO io_pio, uint in_stateMachine,
     true                           // Start immediately
   );
 
-  dma_channel_set_irq1_enabled(g_dmaChannelIndex, true);
+  dma_irqn_set_channel_enabled(DMA_IRQ_1, g_dmaChannelIndex, true);
   irq_set_exclusive_handler(DMA_IRQ_1, in_dmaInterruptHandler);
   irq_set_enabled(DMA_IRQ_1, true);
 }
