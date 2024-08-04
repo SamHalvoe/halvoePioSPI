@@ -22,8 +22,8 @@ const size_t dmaBufferCount = 2;
 using DmaBuffer = std::array<uint8_t, dmaBufferSize>;
 using DmaBufferArray = std::array<DmaBuffer, dmaBufferCount>;
 DmaBufferArray dmaBufferArray;
-size_t currentDmaBufferIndex = 0;
-size_t previousDmaBufferIndex = currentDmaBufferIndex;
+volatile size_t currentDmaBufferIndex = 0;
+volatile size_t previousDmaBufferIndex = currentDmaBufferIndex;
 
 DmaBuffer& getCurrentDmaBuffer()
 {
@@ -54,18 +54,8 @@ volatile bool isCommandCompleted = false;
 
 void __time_critical_func(handleCSIrq)()
 {
-  currentPinStatus = digitalReadFast(HALVOE_SPI_PIN_CS) ? HIGH : LOW;
-  Serial.println(currentPinStatus);
-  Serial.println(previousPinStatus);
-  if (currentPinStatus == HIGH && previousPinStatus == LOW)
-  {
-    isCommandCompleted = true;
-    halvoePioSPI::restart_dma_channel(getNextDmaBuffer().data(), dmaBufferSize);
-  }
-
-  previousPinStatus = currentPinStatus;
-  
-  Serial.println("handleCSIrq() done");
+  isCommandCompleted = true;
+  halvoePioSPI::restart_dma_channel(getNextDmaBuffer().data(), dmaBufferSize);
 }
 
 void setup()
@@ -80,7 +70,7 @@ void setup()
   }
   
   pinMode(HALVOE_SPI_PIN_CS, INPUT);
-  attachInterrupt(digitalPinToInterrupt(HALVOE_SPI_PIN_CS), handleCSIrq, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(HALVOE_SPI_PIN_CS), handleCSIrq, RISING);
   stateMachine = halvoePioSPI::setup(pio1, HALVOE_SPI_PIN_RX, getCurrentDmaBuffer().data(), dmaBufferSize, handleDmaIrq);
   Serial.println("Leaving setup()");
 
@@ -94,9 +84,9 @@ void loop()
   {
     String printString;
 
-    for (size_t index = 0; index < 128/*dmaBufferSize*/; ++index)
+    for (size_t index = 0; index < 128; ++index)
     {
-      if (getCurrentDmaBuffer()[index] < 10) { printString.concat('_'); }
+      if (getCurrentDmaBuffer()[index] < 16) { printString.concat('_'); }
       printString.concat(String(getCurrentDmaBuffer()[index], HEX));
 
       if ((index + 1) % 64 == 0)
@@ -105,9 +95,11 @@ void loop()
       }
     }
 
-    for (size_t index = 0; index < 128/*dmaBufferSize*/; ++index)
+    printString.concat('\n');
+
+    for (size_t index = 0; index < 128; ++index)
     {
-      if (getPreviousDmaBuffer()[index] < 10) { printString.concat('_'); }
+      if (getPreviousDmaBuffer()[index] < 16) { printString.concat('_'); }
       printString.concat(String(getPreviousDmaBuffer()[index], HEX));
 
       if ((index + 1) % 64 == 0)
